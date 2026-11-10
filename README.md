@@ -55,11 +55,12 @@ El motor SQL evalúa las discrepancias de importes y las ventanas temporales de 
 
 ## 📈 Resultados & Indicadores de Gestión
 
-| Indicador | Valor / Métrica | Impacto en Negocio |
+| Indicador | Valor / Métrica | Interpretación & Impacto en Negocio |
 | --- | --- | --- |
-| **Efectividad del Motor** | `99.88%` | Reducción drástica del trabajo manual en el cierre mensual. |
-| **Partidas para Revisión Manual** | `0.12%` | Focalización del análisis humano exclusivamente en excepciones complejas. |
-| **Monto Auditado** | `$49,724,795.06` | Cobertura integral de la muestra transaccional procesada. |
+| **Muestra Total Processada** | `1.003` operaciones | Cobertura completa del universo transaccional auditado. |
+| **Tasa de Coincidencia (Match Rate)** | `98.70%` | Identificación de comprobantes correlacionados entre sistemas. |
+| **Conciliación Automática en Término** | `79.66%` | Aprobación directa sin intervención humana (máximo 72 hs). |
+| **Monto en Riesgo Financiero** | `$10,286,245.43` | Valor total bajo supervisión (clearing demorado, descalces de fecha y omisiones). |
 
 ---
 
