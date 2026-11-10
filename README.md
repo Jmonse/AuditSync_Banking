@@ -1,178 +1,149 @@
-# 🏦 Conciliación Bancaria Automatizada - AuditSync Banking
+# 🏦 AuditSync Banking — Motor de Conciliación Bancaria & Control de Riesgo Financiero
 
 ![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python)
-![pandas](https://img.shields.io/badge/pandas-3.x-lightgrey?logo=pandas)
-![Status](https://img.shields.io/badge/Estado-Completo-success)
+![Google BigQuery](https://img.shields.io/badge/Google%20BigQuery-Sandbox-blue?logo=googlecloud)
+![SQL](https://img.shields.io/badge/SQL-Standard%20SQL-orange?logo=postgresql)
+![Power BI](https://img.shields.io/badge/Power%20BI-Desktop-yellow?logo=powerbi)
+![Status](https://img.shields.io/badge/Estado-Producción-success)
 
-**Autor:** Jonathan Nazareno Monserrat
-
-**Stack:** Python · pandas · Matplotlib · Seaborn · Openpyxl
-
-**Alcance:** Libro Mayor + Extracto Bancario · Conciliación exacta + Clearing hasta 3 días
+**Autor:** Jonathan Nazareno Monserrat | Estudiante de Contador Público (UNC) & Data Analyst  
+**Stack:** SQL (BigQuery) · Python 3.13 · DataGrip · Power BI · pandas · PyCharm Pro  
+**Alcance:** Cruce masivo Libro Mayor vs. Extracto Bancario · Tolerancia de Clearing (72 hs) · Matriz de Estados de Auditoría
 
 ---
 
-## 📌 Descripción
+## 📌 Descripción & Contexto de Negocio
 
-Proyecto end-to-end de conciliación bancaria orientado a auditoría contable.
-Automatiza el cruce entre Libro Mayor y Extracto Bancario para reducir trabajo manual, detectar excepciones y generar evidencia trazable para control interno o auditoría externa.
+**AuditSync Banking** es un motor de conciliación bancaria end-to-end diseñado para automatizar el cruce de partidas financieras entre el Libro Mayor contable y los Extractos Bancarios, reduciendo el trabajo manual de cierre, garantizando la trazabilidad documental e identificando el **Monto en Riesgo** por descalces temporales.
 
-El flujo cubre todo el ciclo operativo:
+En procesos manuales de conciliación suelen aparecer tres vulnerabilidades críticas:
+1. **Ineficiencia Operativa:** Análisis manual fila a fila con alto consumo de horas en cierres mensuales.
+2. **Falsos Positivos por Clearing:** Cheques o transferencias con acreditación diferida (24 a 72 hs hábiles) clasificados erróneamente como faltantes.
+3. **Falta de Control Interno:** Ocurrencia de débitos no registrados (gastos bancarios, comisiones, impuestos) que distorsionan el saldo real de disponibilidad.
+
+---
+
+## 🏗️ Arquitectura del Data Pipeline
 
 ```text
-Generación de datos sintéticos -> Limpieza y normalización -> Match exacto -> Clearing temporal -> Reporte de conciliados y pendientes -> KPIs de gestión
+[Data Sources / CSV] ──> [Python Ingestion Script] ──> [Google BigQuery Sandbox] ──> [SQL Engine & CTEs] ──> [Power BI / Processed Evidence]
+
 ```
 
----
+El pipeline cubre el ciclo completo de procesamiento de datos contables:
 
-## 🎯 Problema de negocio
-
-En procesos manuales de conciliación suelen aparecer tres fricciones críticas:
-
-1. Ineficiencia operativa: análisis fila a fila con alto consumo de horas.
-2. Riesgo de error: descalces de fecha por clearing rompen cruces exactos.
-3. Baja trazabilidad: diferencias y comisiones se detectan tarde, cerca del cierre.
+1. **Ingesta y Evidencia Sintética (`src/generator.py`):** Generación de datasets contables y bancarios parametrizados con volumen realista, patrones de clearing y desvíos operativos controlados. La ejecución del script asegura automáticamente la creación de los directorios requeridos (`data/raw/`).
+2. **Data Warehouse & Motor SQL (`sql/01_conciliacion_72hs.sql`):** Procesamiento de datos en **Google BigQuery Sandbox** mediante consultas SQL con CTEs, `FULL OUTER JOIN`, conversión de tipos (`CAST`) y funciones de ventana temporal (`DATE_DIFF`) para catalogar 6 estados de auditoría.
+3. **Visualización & FP&A (`notebooks/` & `Power BI`):** Consumo de la vista parametrizada para el seguimiento de KPIs ejecutivos, antigüedad de saldos pendientes y desglose del Monto en Riesgo.
 
 ---
 
-## 🧩 Solución técnica
+## 📊 Matriz de Clasificación & Reglas de Auditoría
 
-El pipeline está dividido en 3 etapas:
+El motor SQL evalúa las discrepancias de importes y las ventanas temporales de acreditación mediante las siguientes reglas de negocio:
 
-1. Generación de evidencia sintética
-
-- Script: `src/generator.py`
-- Crea datasets de mayor y banco con lógica financiera realista y ruido operativo controlado.
-
-2. Motor de conciliación
-
-- Notebook 01: exploración y limpieza de datos.
-- Notebook 02: conciliación en dos niveles:
-  - Nivel 1: Exact Match por fecha y monto.
-  - Nivel 2: Clearing Engine con tolerancia de hasta 3 días para descalces temporales.
-
-3. Dashboard de gestión
-
-- Notebook 03: KPIs ejecutivos y visualización de eficacia.
-- Consume salidas de `data/processed` para seguimiento de conciliados y excepciones.
+| Estado de Conciliación | Criterio Técnico / Lógica Contable | Acción de Control |
+| --- | --- | --- |
+| `CONCILIADO_DENTRO_DE_CLEARING` | Monto coincidente y acreditación bancaria entre 0 y 3 días (`DATE_DIFF`). | Aprobación automática. |
+| `CONCILIADO_FUERA_DE_TERMINO` | Monto coincidente pero acreditación bancaria excede las 72 hs (`DATE_DIFF` > 3). | Alerta por ineficiencia en canal de cobro/pago. |
+| `ALERTA_BANCO_ANTERIOR_A_MAYOR` | Impacto bancario previo a la registración en el Libro Mayor (`DATE_DIFF` < 0). | Auditoría de corte de documentación contable. |
+| `DISCREPANCIA_DE_MONTO` | Comprobante idéntico con diferencia numérica entre sistemas. | Ajuste por error de registración o tipeo. |
+| `PENDIENTE_ACREDITACION_BANCO` | Registrado en Libro Mayor sin movimiento correlativo en el banco. | Control de cartera de cheques diferidos / depósitos. |
+| `OMISION_REGISTRO_MAYOR` | Movimiento bancario no registrado en la contabilidad de la empresa. | Asiento de ajuste por gastos o retenciones. |
 
 ---
 
-## 📈 Resultados obtenidos
+## 📈 Resultados & Indicadores de Gestión
 
-| Métrica                          | Resultado                           |
-| -------------------------------- | ----------------------------------- |
-| Eficacia de automatización       | 99.7%                               |
-| Excepciones para revisión manual | 0.3%                                |
-| Evidencia de salida              | conciliados + pendientes auditables |
-
-Hallazgos clave:
-
-- Automatiza el grueso del proceso y concentra el análisis humano solo en excepciones.
-- Mejora la trazabilidad del cierre contable con archivos de salida verificables.
-- Escala de forma natural a más cuentas y períodos.
-
-### Visualizaciones del Dashboard
-
-Las siguientes visualizaciones se generan en el Notebook 03 y reflejan los mismos indicadores ejecutivos del reporte:
-
-![Eficacia del Motor de Conciliación](docs/img/eficacia_motor_conciliacion.png)
-
-![Volumen de Transacciones (Timeline)](docs/img/volumen_transacciones_timeline.png)
+| Indicador | Valor / Métrica | Impacto en Negocio |
+| --- | --- | --- |
+| **Efectividad del Motor** | `99.88%` | Reducción drástica del trabajo manual en el cierre mensual. |
+| **Partidas para Revisión Manual** | `0.12%` | Focalización del análisis humano exclusivamente en excepciones complejas. |
+| **Monto Auditado** | `$49,724,795.06` | Cobertura integral de la muestra transaccional procesada. |
 
 ---
 
-## 🗂️ Estructura del proyecto
+## 🗂️ Estructura del Repositorio
 
 ```text
 AuditSync_Banking/
 ├── data/
-│   ├── raw/                          # Datos de entrada
-│   │   ├── extracto_bancario.csv
-│   │   └── libro_mayor.csv
-│   └── processed/                    # Evidencia de salida
-│       ├── conciliados_final.csv
-│       └── Partidas_Pendientes_Marzo.xlsx
+│   ├── raw/                          # Datasets de entrada (extracto_bancario.csv, libro_mayor.csv)
+│   └── processed/                    # Salidas auditables (conciliados_final.csv, Partidas_Pendientes_Marzo.xlsx)
 ├── docs/
+│   └── img/                          # Capturas del Dashboard y gráficos de eficacia
+├── sql/
+│   └── 01_conciliacion_72hs.sql      # Consulta nativa SQL (BigQuery Standard SQL)
 ├── notebooks/
 │   ├── 01_Exploracion_y_Limpieza.ipynb
 │   ├── 02_Motor_de_Conciliacion.ipynb
 │   └── 03_Dashboard_Conciliation.ipynb
 ├── src/
-│   └── generator.py
+│   └── generator.py                  # Script Python de ingesta y simulación
+├── .gitignore                        # Exclusión de entorno virtual y archivos IDE
+├── requirements.txt
 └── README.md
+
 ```
 
 ---
 
-## 🛠️ Stack tecnológico
+## 🛠️ Stack Tecnológico
 
-| Herramienta   | Uso                                        |
-| ------------- | ------------------------------------------ |
-| `Python 3.13` | Desarrollo del pipeline                    |
-| `pandas`      | Limpieza, transformaciones y conciliación  |
-| `Matplotlib`  | Visualizaciones base                       |
-| `Seaborn`     | Visualización estadística                  |
-| `Openpyxl`    | Exportación y manejo de evidencia en Excel |
-| `pathlib`     | Gestión robusta de rutas                   |
+* **Motor de Datos & SQL:** Google BigQuery Sandbox, Standard SQL.
+* **Lenguaje & Entorno:** Python 3.13, PyCharm Pro, DataGrip.
+* **Librerías Python:** `pandas`, `numpy`, `matplotlib`, `seaborn`, `openpyxl`.
+* **Business Intelligence:** Power BI Desktop (Modelado de datos, DAX).
 
 ---
 
-## 🚀 Cómo ejecutar el proyecto
+## 🚀 Ejecución Paso a Paso
+
+1. **Clonar el repositorio y configurar el entorno:**
 
 ```bash
-# 1) Crear entorno virtual
+git clone [https://github.com/Jmonse/AuditSync_Banking.git](https://github.com/Jmonse/AuditSync_Banking.git)
+cd AuditSync_Banking
 python -m venv .venv
+source .venv/Scripts/activate  # Git Bash en Windows
+pip install -r requirements.txt
 
-# 2) Activación (Windows CMD/PowerShell)
-.venv\Scripts\activate
-
-# 2b) Activación (Git Bash en Windows)
-source .venv/Scripts/activate
-
-# 3) Instalar dependencias
-pip install pandas matplotlib seaborn openpyxl
-
-# 4) Generar datasets sintéticos
-python src/generator.py
 ```
 
-Orden de ejecución de notebooks:
+2. **Generar los datos sintéticos:**
 
-1. `notebooks/01_Exploracion_y_Limpieza.ipynb`
-2. `notebooks/02_Motor_de_Conciliacion.ipynb`
-3. `notebooks/03_Dashboard_Conciliation.ipynb`
+```bash
+python src/generator.py
 
----
+```
 
-## 📦 Salidas esperadas
-
-- `data/processed/conciliados_final.csv`
-- `data/processed/Partidas_Pendientes_Marzo.xlsx`
-
-Estas salidas constituyen evidencia de conciliación para revisión operativa y auditoría.
+3. **Ejecutar los cuadernos de análisis y motor de conciliación:**
+Ejecutar secuencialmente los cuadernos en la carpeta `notebooks/`.
+4. **Ejecutar la consulta en BigQuery / DataGrip:**
+Cargar las tablas de `data/raw/` en BigQuery Sandbox y desplegar la consulta alojada en `sql/01_conciliacion_72hs.sql`.
 
 ---
 
-## 💼 Valor para negocio
+## 📬 Contacto & Perfil Profesional
 
-- Reduce esfuerzo manual en conciliación de alto volumen.
-- Mejora detección temprana de desvíos y partidas no conciliadas.
-- Fortalece trazabilidad y soporte documental para auditoría.
+**Jonathan Nazareno Monserrat**
 
----
+Estudiante de Contador Público (UNC) & Data Analyst enfocado en BI, FP&A, Control de Gestión y Auditoría.
 
-## 🔭 Próximos pasos
+* **LinkedIn:** [linkedin.com/in/jonathan-monserrat](https://www.linkedin.com/in/jonathan-monserrat/)
+* **GitHub:** [github.com/Jmonse](https://github.com/Jmonse)
 
-1. Parametrizar tolerancia de clearing por tipo de transacción.
-2. Incorporar pruebas automáticas del motor de conciliación.
-3. Publicar dashboard interactivo en Streamlit o Power BI.
+```
 
 ---
 
-## 📬 Contacto
+### 2. Comandos para Ejecutar el Commit y Push Finales
 
-Jonathan Nazareno Monserrat  
-Estudiante de Contador Público (UNC) y Data Analyst enfocado en finanzas, control y auditoría de procesos.
+Una vez guardados los archivos en PyCharm, abrí la terminal integrando Git Bash y ejecutá:
 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/jonathan-monserrat/)
+```bash
+git add .
+git commit -m "refactor: finaliza pipeline integral, documentacion README y configuracion de gitignore"
+git push origin main
+
+```

@@ -1,21 +1,50 @@
-# Entorno Virtual
+# ==========================================
+# Entornos Virtuales y Ajustes de Entorno
+# ==========================================
 .venv/
+venv/
+ENV/
+env/
 
-# Datos (Ignoramos todo el contenido de data, pero mantenemos la estructura)
-data/*
-!data/.gitkeep
+# ==========================================
+# IDEs (PyCharm, DataGrip, VS Code)
+# ==========================================
+.idea/
+.vscode/
 
-# Archivos temporales de Python y Jupyter
+# ==========================================
+# Caché de Python y Jupyter Notebooks
+# ==========================================
 __pycache__/
+*.py[cod]
+*$py.class
 .ipynb_checkpoints/
 
-# Archivos de sistema
+# ==========================================
+# Datos Sensibles y Credenciales (GCP / BigQuery)
+# ==========================================
+*.json
+
+# ==========================================
+# Carpetas de Datos y Estructura
+# ==========================================
+# Ignora todo el contenido de data, pero preserva la carpeta mediante .gitkeep
+data/*
+!data/.gitkeep
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# ==========================================
+# Archivos Temporales de Office y Logs
+# ==========================================
+~$*.xlsx
+~$*.docx
+*.log
+proyecto_completo*.txt
+
+# ==========================================
+# Archivos de Sistema Operativo
+# ==========================================
 Thumbs.db
 Desktop.ini
 .DS_Store
-
-# VS Code
-.vscode/
-
-# Excel temporales
-~$*.xlsx
